@@ -19,17 +19,31 @@ const yauzl = require('yauzl-promise'),
 const path = require("path"),
   { pipeline} = require("stream/promises"),
   { Transform } = require('stream');
+const wt = require("worker-thread");
 
-  const grayscaleHelper = function(i) {
-  const gray = ( this.data[i] +  this.data[i+1] +  this.data[i+2]) / 3
-  this.data[i] = gray;
-  this.data[i + 1] = gray;
-  this.data[i + 2] = gray;
+  const grayscaleHelper = function(idx) {
+  const gray = ( this.data[idx] +  this.data[idx+1] +  this.data[idx+2]) / 3
+  this.data[idx] = gray;
+  this.data[idx + 1] = gray;
+  this.data[idx + 2] = gray;
 }
-  
+  const sepiaHelper = function(idx) {
+        let red = this.data[idx];
+        let green = this.data[idx + 1];
+        let blue = this.data[idx + 2];
+
+        let sepiaRed = (red * 0.393) + (green * 0.769) + (blue * 0.189);
+        let sepiaGreen = (red * 0.349) + (green * 0.686) + (blue * 0.168);
+        let sepiaBlue = (red * 0.272) + (green * 0.534) + (blue * 0.131);
+
+        this.data[idx] = sepiaRed < 255 ? sepiaRed : 255;
+        this.data[idx + 1] = sepiaGreen < 255 ? sepiaGreen : 255;
+        this.data[idx + 2] = sepiaBlue < 255 ? sepiaBlue : 255;
+  }
 
   const filters = {
-  grayscale: grayscaleHelper
+  grayscale: grayscaleHelper,
+  sepia: sepiaHelper
 }
    
 
@@ -42,15 +56,6 @@ const path = require("path"),
  */
 
 
-// const unzip = (pathIn, pathOut) => {
-//   // return createReadStream(pathIn).pipe(unzipper.Extract({path: pathOut})).promise()
-//   return new Promise((resolve, reject) => {
-//     if (err) reject(err);
-//     const zip = new AdmZip(pathIn);
-//     zip.extractAllTo(pathOut, true);
-//     resolve()
-//     })
-// };
 
 const unzip = async (pathIn, pathOut) => {
     const zip = await yauzl.open(pathIn);
