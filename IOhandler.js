@@ -9,14 +9,16 @@
  */
 
 
+// const unzipper = require("unzipper"),
+// AdmZip = require("adm-zip"),
 
-const unzipper = require("unzipper"),
+const yauzl = require('yauzl-promise'),
   fs = require("fs").promises,
   { createReadStream, createWriteStream, readdir } = require("fs"), 
-  PNG = require("pngjs").PNG,
-  path = require("path"),
-  AdmZip = require("adm-zip"),
-  { pipeline, Transform } = require("stream");
+  PNG = require("pngjs").PNG;
+const path = require("path"),
+  { pipeline} = require("stream/promises"),
+  { Transform } = require('stream');
 
   const grayscaleHelper = function(i) {
   const gray = ( this.data[i] +  this.data[i+1] +  this.data[i+2]) / 3
@@ -40,15 +42,35 @@ const unzipper = require("unzipper"),
  */
 
 
-const unzip = (pathIn, pathOut) => {
-  // return createReadStream(pathIn).pipe(unzipper.Extract({path: pathOut})).promise()
-  return new Promise((resolve, reject) => {
-    const zip = new AdmZip(pathIn);
-    zip.extractAllTo(pathOut, true);
-    resolve()
-    })
-};
+// const unzip = (pathIn, pathOut) => {
+//   // return createReadStream(pathIn).pipe(unzipper.Extract({path: pathOut})).promise()
+//   return new Promise((resolve, reject) => {
+//     if (err) reject(err);
+//     const zip = new AdmZip(pathIn);
+//     zip.extractAllTo(pathOut, true);
+//     resolve()
+//     })
+// };
 
+const unzip = async (pathIn, pathOut) => {
+    const zip = await yauzl.open(pathIn);
+    try {
+        for await (const entry of zip) {
+            if (entry.filename.includes('/')) {
+                continue;
+            }
+            const readStream = await entry.openReadStream();
+            const writeStream = createWriteStream(
+                // path.join(pathOut, entry.fileName)
+                `${pathOut}/${entry.filename}`
+            );
+            await pipeline(readStream, writeStream);
+        }
+    } 
+    finally {
+      await zip.close();
+    }
+};
 
 
 /**
@@ -72,6 +94,7 @@ const readDir = (dir) => {
 
 const errorHandler = (err) => {
   if (err) {
+    console.log("in error")
     console.log(err);
   }
 };
@@ -98,9 +121,37 @@ const filterStream = function(imageFilter) {
 */
 
 const filterMyImage = (pathIn, pathOut, filterKind) => {
-  return new Promise((resolve, reject) => resolve(
-    pipeline(createReadStream(pathIn), new PNG().on("parsed", function() { filterStream.call(this, filterKind)}), createWriteStream(pathOut), errorHandler)))
+  return (
+    pipeline(createReadStream(pathIn), new PNG().on("parsed", function() { 
+      filterStream.call(this, filterKind)
+    }), 
+    createWriteStream(pathOut)
+    ))
+      
 };
+
+
+// const filterMyImage = (pathIn, pathOut, filterKind) => {
+//   const transformStream = new Transform({
+//     transform(chunk, encoding, callback) {
+//       new PNG().parse(chunk, function(error, data) {
+//         if (error) {
+//           callback(error);
+//         } else {
+//           filterStream.call(data, filterKind);
+//           this.push(PNG.sync.write(data));
+//           callback();
+//         }
+//       });
+//     }
+//   });
+
+//   return pipeline(
+//     createReadStream(pathIn),
+//     transformStream,
+//     createWriteStream(pathOut)
+//   );
+// };
 
 module.exports = {
   unzip,
