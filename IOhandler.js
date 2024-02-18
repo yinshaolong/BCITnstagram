@@ -125,15 +125,23 @@ const filterStream = function(imageFilter) {
 * @return {promise}
 */
 
-const filterMyImage = ({pathIn, pathOut, filterKind}) => {
-  console.log("in filter my iamge", pathIn, pathOut, filterKind)
-  return (
-    pipeline(createReadStream(pathIn), new PNG().on("parsed", function() { 
+const filterMyImage = ({pathIn, pathOut, filterKind, callback}) => {
+  // return (
+  //   pipeline(createReadStream(pathIn), new PNG().on("parsed", function() { 
+  //     filterStream.call(this, filterKind)
+  //   }), 
+  //   createWriteStream(pathOut)
+  //   ))
+    let promise  = pipeline(createReadStream(pathIn), new PNG().on("parsed", function() { 
       filterStream.call(this, filterKind)
     }), 
-    createWriteStream(pathOut)
-    ))
-      
+    createWriteStream(pathOut));
+
+    promise.then(() => {
+      callback();
+      return promise
+    })
+    
 };
 
 

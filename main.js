@@ -34,25 +34,14 @@ IOhandler.unzip(zipFilePath, pathUnzipped)
                 return files.length;
             }
         })
-        console.log(directoryFiles);
+
         const ch = wt.createChannel(IOhandler.filterMyImage, numFiles);
-        ch.on("done", (err, result) => {
-        if (err) {
-            console.error(err);
-        }
-        
-        console.log(result);
-        });
-        
-        ch.on("stop", () => {
-        console.log("channel is stop");
-        });
 
         for(let index in directoryFiles){
-            ch.add({pathIn: path.join(__dirname,"unzipped",directoryFiles[index]), pathOut: pathProcessed + `/modified${index}.png`, filterKind: "sepia"})
+            ch.add({pathIn: path.join(__dirname,"unzipped",directoryFiles[index]), pathOut: pathProcessed + `/modified${index}.png`, filterKind: "sepia", callback: ch.stop})
+
         }
-        // ch.stop()
+        
     })
-    .then(()=> ch.stop())
     .then(() => console.log("All images done!"))
     .catch((err) => console.log("err", err))
