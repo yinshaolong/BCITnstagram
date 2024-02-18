@@ -19,7 +19,7 @@ const yauzl = require('yauzl-promise'),
 const path = require("path"),
   { pipeline} = require("stream/promises"),
   { Transform } = require('stream');
-const wt = require("worker-thread");
+
 
   const grayscaleHelper = function(idx) {
   const gray = ( this.data[idx] +  this.data[idx+1] +  this.data[idx+2]) / 3
@@ -96,7 +96,7 @@ const readDir = (dir) => {
 };
 
 
-
+//no longer used as the errorHandling for pipelines is deal with by stream/promise
 const errorHandler = (err) => {
   if (err) {
     console.log("in error")
@@ -125,7 +125,8 @@ const filterStream = function(imageFilter) {
 * @return {promise}
 */
 
-const filterMyImage = (pathIn, pathOut, filterKind) => {
+const filterMyImage = ({pathIn, pathOut, filterKind}) => {
+  console.log("in filter my iamge", pathIn, pathOut, filterKind)
   return (
     pipeline(createReadStream(pathIn), new PNG().on("parsed", function() { 
       filterStream.call(this, filterKind)
