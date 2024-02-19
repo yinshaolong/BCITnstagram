@@ -8,16 +8,14 @@
  *
  */
 
-// const unzipper = require("unzipper"),
-// AdmZip = require("adm-zip"),
 const wt = require("worker-thread");
-const yauzl = require("yauzl-promise"),
-  fs = require("fs").promises,
-  { createReadStream, createWriteStream, readdir } = require("fs"),
-  PNG = require("pngjs").PNG;
-const path = require("path"),
-  { pipeline } = require("stream/promises"),
-  { Transform } = require("stream");
+const yauzl = require("yauzl-promise");
+const fs = require("fs").promises;
+const { AutoComplete } = require("enquirer");
+const { createReadStream, createWriteStream, readdir } = require("fs");
+const PNG = require("pngjs").PNG;
+const path = require("path");
+const { pipeline } = require("stream/promises");
 
 const grayscaleHelper = function (idx) {
   const gray = (this.data[idx] + this.data[idx + 1] + this.data[idx + 2]) / 3;
@@ -114,12 +112,6 @@ const filterStream = function (imageFilter) {
  */
 
 const filterMyImage = ({ pathIn, pathOut, filterKind, callback }) => {
-  // return (
-  //   pipeline(createReadStream(pathIn), new PNG().on("parsed", function() {
-  //     filterStream.call(this, filterKind)
-  //   }),
-  //   createWriteStream(pathOut)
-  //   ))
   let promise = pipeline(
     createReadStream(pathIn),
     new PNG().on("parsed", function () {
@@ -127,57 +119,28 @@ const filterMyImage = ({ pathIn, pathOut, filterKind, callback }) => {
     }),
     createWriteStream(pathOut)
   );
-
-  promise.then(() => {
-    callback();
-    return promise;
-  });
+  //* if we dont use "message", we can use callback to resolve -> line 148 *
+  // promise.then(() => {
+  //   callback();
+  //   return promise;
+  // });
 };
 
-// const filterMyImage = (pathIn, pathOut, filterKind) => {
-//   const transformStream = new Transform({
-//     transform(chunk, encoding, callback) {
-//       new PNG().parse(chunk, function(error, data) {
-//         if (error) {
-//           callback(error);
-//         } else {
-//           filterStream.call(data, filterKind);
-//           this.push(PNG.sync.write(data));
-//           callback();
-//         }
-//       });
-//     }
-//   });
-
-//   return pipeline(
-//     createReadStream(pathIn),
-//     transformStream,
-//     createWriteStream(pathOut)
-//   );
-// };
 const convertImage = (imageConversionInfo) => {
   const pathProcessedGray = path.join(__dirname, "grayscaled");
   const pathProcessedSepia = path.join(__dirname, "sepia");
   let numFiles = fs.readdir(path.join(__dirname, "unzipped"), (err, files) => {
     if (!err) {
-      // console.log(files.length);
       return files.length;
     }
   });
-  // console.log("filtertype", imageConversionInfo.filterType)
   let pathProcessed =
     imageConversionInfo.filterType === "sepia"
       ? pathProcessedSepia
       : pathProcessedGray;
-  // console.log("path", pathProcessed)
 
   const ch = wt.createChannel(filterMyImage, numFiles);
   ch.on("message", (msg) => resolve(msg));
-  // ch.on("done", (err, result) => {
-  //   if (err) {
-  //     console.error(err);
-  //   }
-  // });
 
   for (let index in imageConversionInfo.directoryFiles) {
     // ch.add({pathIn: path.join(__dirname,"unzipped",imageConversionInfo.directoryFiles[index]), pathOut: pathProcessed + `/modified${index}.png`, filterKind: imageConversionInfo.filterType, callback: ch.stop})
@@ -192,24 +155,22 @@ const convertImage = (imageConversionInfo) => {
     });
   }
 };
+
+const getFilter = async () => {
+  const askFilter = new AutoComplete({
+    name: "filter",
+    message: "Choose from available filters: ",
+    limit: 10,
+    initial: 0,
+    choices: ["grayscale", "sepia"],
+  });
+  const filter = await askFilter.run();
+  return filter;
+};
 module.exports = {
   unzip,
   readDir,
   filterMyImage,
   convertImage,
+  getFilter,
 };
-
-// const unzipStream = (file) => new Transform({
-//   transform(chunk, encoding, callback) {
-//     zip.addFile(file, chunk);
-//     callback();
-//   },
-//   flush(callback) {
-//     const zipEntries = zip.getEntries();
-//     for (const entry of zipEntries) {
-//       const fileContent = entry.getData();
-//       this.push(fileContent);
-//     }
-//     callback();
-//   },
-// });
