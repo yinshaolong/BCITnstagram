@@ -119,7 +119,7 @@ const filterMyImage = ({ pathIn, pathOut, filterKind, callback }) => {
     }),
     createWriteStream(pathOut)
   );
-  //* if we dont use "message", we can use callback to resolve -> line 148 *
+  //* if we dont use "message", we can use callback to resolve -> line 146 *
   // promise.then(() => {
   //   callback();
   //   return promise;
